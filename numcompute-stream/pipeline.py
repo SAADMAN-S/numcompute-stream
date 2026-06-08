@@ -1,7 +1,5 @@
 """
-Minimal Transformer / Estimator API and Pipeline chaining.
-
-
+Minimal Transformer / Estimator API and Pipeline chaining.   
 This module follows the NumCompute core requirement for:
 - Transformer: fit, transform, fit_transform
 - Estimator: fit, predict
@@ -13,16 +11,12 @@ import numpy as np
 
 
 def _accepts_y(method):
-    """
-    Check whether a method accepts a y parameter.
-    """
+    """Check whether a method accepts a y parameter."""
     return "y" in inspect.signature(method).parameters
 
 
 class Transformer:
-    """
-    Base class for preprocessing transformers.
-    """
+    """Base class for preprocessing transformers."""
 
     def fit(self, X, y=None):
         return self
@@ -35,11 +29,18 @@ class Transformer:
             return self.fit(X).transform(X)
         return self.fit(X, y).transform(X)
 
+    def partial_fit(self, X, y=None):
+        """Incremental fit : subclasses override to support streaming.
+        Parameters:
+        X : array-like
+        y : array-like or None
+        Returns Transformer as self
+        """
+        return self
+
 
 class Estimator:
-    """
-    Base class for model estimators.
-    """
+    """Base class for model estimators."""
 
     def fit(self, X, y=None):
         if y is None:
@@ -48,12 +49,18 @@ class Estimator:
 
     def predict(self, X):
         raise NotImplementedError("Estimator subclasses must implement predict().")
-
+    
+    def partial_fit(self, X, y=None):
+        """Incremental fit — subclasses must override for streaming support.
+        Parameters:
+        X : array-like
+        y : array-like or None
+        Returns Estimator as self
+        """
+        raise NotImplementedError("Estimator subclasses must implement partial_fit() for streaming.")
 
 class Pipeline:
-    """
-    Chain multiple transformers and an optional final estimator.
-    """
+    """Chain multiple transformers and an optional final estimator."""
 
     def __init__(self, steps):
         if not steps:
@@ -93,6 +100,28 @@ class Pipeline:
                 step.fit(X)
 
             if hasattr(step, "transform") and not is_final_step:
+                X = step.transform(X)
+
+        return self
+
+    def partial_fit(self, X, y=None):
+        """Incrementally fit all steps on a new chunk. Calls partial_fit() on each step if available, otherwise fit(). Transforms X through intermediate steps before passing to the next.
+        Parameters:
+        X : array-like, shape (n_samples, n_features)
+        y : array-like or None
+        Returns Pipeline as self
+        """
+        for i, (name, step) in enumerate(self.steps):
+            is_final = i == len(self.steps) - 1
+
+            fit_fn = getattr(step, "partial_fit", None) or step.fit
+
+            if y is not None and _accepts_y(fit_fn):
+                fit_fn(X, y)
+            else:
+                fit_fn(X)
+
+            if hasattr(step, "transform") and not is_final:
                 X = step.transform(X)
 
         return self
