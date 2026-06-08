@@ -1,9 +1,6 @@
 """
 sort_search.py
-
 Sorting, top-k selection, and binary search utilities for NumCompute.
-
-Author: Saadman Sakib
 """
 
 import numpy as np

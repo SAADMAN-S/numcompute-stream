@@ -1,8 +1,6 @@
 """
 Finite-difference gradient and Jacobian estimation.
 
-Author: Mazharul Islam Rakib
-
 This module follows the NumCompute core requirement
 - grad(f, x, h=1e-5, method='central'|'forward')
 - jacobian(F, x, h=1e-5, method='central'|'forward')

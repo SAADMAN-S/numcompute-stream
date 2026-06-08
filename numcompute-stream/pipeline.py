@@ -1,7 +1,6 @@
 """
 Minimal Transformer / Estimator API and Pipeline chaining.
 
-Author: Mazharul Islam Rakib
 
 This module follows the NumCompute core requirement for:
 - Transformer: fit, transform, fit_transform

@@ -1,8 +1,6 @@
 """
 tests/test_sort_search.py
-=========================
 Unit tests for numcompute/sort_search.py
-Author: Saadman Sakib
 """
 
 import sys

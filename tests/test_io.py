@@ -1,8 +1,6 @@
 """
 test_io.py
 Unit tests for io: Load CSV
-
-Author: Risat Rahaman
 """
 
 import sys

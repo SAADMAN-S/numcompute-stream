@@ -1,8 +1,6 @@
 """
 test_preprocessing.py
 Unit tests for utils: distances, activation functions, logsumexp, batching
-
-Author: Risat Rahaman
 """
 
 import numpy as np

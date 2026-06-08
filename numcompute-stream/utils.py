@@ -1,8 +1,6 @@
 """
 utils.py
 Utilites: distances, activations, logsumexp and batching.
-
-Author: Risat Rahaman
 """
 
 import numpy as np

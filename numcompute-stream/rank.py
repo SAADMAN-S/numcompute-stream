@@ -1,6 +1,5 @@
 """
 rank.py
-
 Ranking and percentile utilities for NumCompute.
 Author: Saadman Sakib
 """

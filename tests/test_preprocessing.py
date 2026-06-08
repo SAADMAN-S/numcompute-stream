@@ -1,8 +1,6 @@
 """
 test_preprocessing.py
 Unit tests for preprocessing: StandardScaler, MinMaxScaler, OneHotEncoder
-
-Author: Risat Rahaman
 """
 
 import unittest

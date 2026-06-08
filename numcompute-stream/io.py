@@ -1,8 +1,6 @@
 """
 io.py
 Read CSV file and return ndarray
-
-Author: Risat Rahaman
 """
 
 import numpy as np

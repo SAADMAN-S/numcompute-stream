@@ -1,9 +1,6 @@
 """
 stats.py
-
 Statistical functions for data analysis in NumCompute.
-
-Author: Benzamin Yasir
 """
 from __future__ import annotations
 

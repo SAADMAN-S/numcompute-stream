@@ -1,8 +1,6 @@
 """
 metrics.py
-
 Evaluation metrics for classification and regression tasks in NumCompute.
-
 """
 from __future__ import annotations
 

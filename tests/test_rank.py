@@ -1,8 +1,6 @@
 """
 tests/test_rank.py
 Unit tests for numcompute/rank.py
-
-Author: Saadman Sakib
 """
 
 import sys
