@@ -359,3 +359,166 @@ class Welford:
     def sample_std(self):
         """Sample standard deviation."""
         return np.sqrt(self.sample_variance)
+
+
+
+
+class StreamingStats:
+    """
+    Chunk-based streaming statistics with incremental updates.
+    Uses Welford's batch algorithm for numerically stable running mean and variance. Optionally maintains a sliding-window histogram.
+    Parameters:
+    bins : int
+        Number of histogram bins (default 10).
+    window_size : int or None
+        If set, histogram uses only the last `window_size` chunks.
+    """
+
+    def __init__(self, bins: int = 10, window_size=None):
+        self._bins = bins
+        self._window_size = window_size
+        self._n_seen = 0
+        self._mean = None
+        self._M2 = None
+        self._hist_range = None
+        self._chunk_buffer = [] 
+        self._n_chunks = 0
+
+    def update_stats(self, X_chunk) -> "StreamingStats":
+        """
+        Incrementally update statistics with a new data chunk.
+        Parameters:
+        X_chunk : array-like, shape (n,) or (n, d)
+        Returns StreamingStats as self
+        """
+        arr = _as_array(X_chunk).ravel()
+        arr = arr[~np.isnan(arr)]
+
+        if arr.size == 0:
+            return self
+
+        n_new = int(arr.size)
+        chunk_mean = float(np.mean(arr))
+        chunk_var = float(np.var(arr))
+
+        if self._mean is None:
+            self._n_seen = n_new
+            self._mean = chunk_mean
+            self._M2 = chunk_var * n_new
+        else:
+            n_old = self._n_seen
+            n_total = n_old + n_new
+            delta = chunk_mean - self._mean
+            self._mean = self._mean + delta * n_new / n_total
+            self._M2 = (self._M2 + chunk_var * n_new
+                        + delta ** 2 * n_old * n_new / n_total)
+            self._n_seen = n_total
+
+        arr_min, arr_max = float(arr.min()), float(arr.max())
+        if self._hist_range is None:
+            self._hist_range = (arr_min, arr_max)
+        else:
+            self._hist_range = (
+                min(self._hist_range[0], arr_min),
+                max(self._hist_range[1], arr_max),
+            )
+
+        # Sliding window buffer
+        if self._window_size is not None:
+            self._chunk_buffer.append(arr.copy())
+            if len(self._chunk_buffer) > self._window_size:
+                self._chunk_buffer.pop(0)
+
+        self._n_chunks += 1
+        return self
+
+    @property
+    def running_mean(self) -> float:
+        """Current running mean excluding NaNs."""
+        if self._mean is None:
+            raise RuntimeError("No data yet. Call update_stats() first.")
+        return self._mean
+
+    @property
+    def running_var(self) -> float:
+        """Current running population variance."""
+        if self._M2 is None:
+            raise RuntimeError("No data yet. Call update_stats() first.")
+        return self._M2 / self._n_seen if self._n_seen > 0 else np.nan
+
+    @property
+    def running_std(self) -> float:
+        """Current running population standard deviation."""
+        return float(np.sqrt(self.running_var))
+
+    @property
+    def n_samples(self) -> int:
+        """Total non-NaN samples seen so far."""
+        return self._n_seen
+
+    def get_histogram(self, data=None):
+        """
+        Compute histogram over accumulated or windowed data. In sliding-window mode the buffered chunks are used automatically and in cumulative mode you must pass `data` (raw values are not stored).
+        Parameters:
+        data : array-like or None
+            Required in cumulative mode.
+
+        Returns hist as np.ndarray and bin_edges as np.ndarray
+        """
+        if self._window_size is not None:
+            if not self._chunk_buffer:
+                raise RuntimeError("Buffer is empty. Call update_stats() first.")
+            hist_data = np.concatenate(self._chunk_buffer)
+        else:
+            if data is None:
+                raise ValueError(
+                    "Provide data= in cumulative mode; raw values are not stored.")
+            hist_data = _as_array(data).ravel()
+            hist_data = hist_data[~np.isnan(hist_data)]
+
+        if hist_data.size == 0:
+            raise ValueError("No valid data for histogram.")
+        return np.histogram(hist_data, bins=self._bins)
+
+    def get_quantile(self, q, data=None):
+        """
+        Compute quantile(s) over windowed buffer or provided data.
+
+        Parameters:
+        q : float or array-like
+        data : array-like or None. Required in cumulative mode
+        Returns np.ndarray
+        """
+        if self._window_size is not None:
+            if not self._chunk_buffer:
+                raise RuntimeError("Buffer is empty.")
+            hist_data = np.concatenate(self._chunk_buffer)
+        else:
+            if data is None:
+                raise ValueError("Provide data= in cumulative mode.")
+            hist_data = _as_array(data).ravel()
+            hist_data = hist_data[~np.isnan(hist_data)]
+
+        return np.nanquantile(hist_data, q)
+
+    def summary(self) -> dict:
+        """
+        Returns dictionary with keys: mean, var, std, n_samples, n_chunks
+        """
+        return {
+            "mean":      self.running_mean,
+            "var":       self.running_var,
+            "std":       self.running_std,
+            "n_samples": self._n_seen,
+            "n_chunks":  self._n_chunks,
+        }
+
+    def reset(self) -> "StreamingStats":
+        """Reset all accumulated state."""
+        self._n_seen = 0
+        self._mean = None
+        self._M2 = None
+        self._hist_range = None
+        self._chunk_buffer = []
+        self._n_chunks = 0
+        return self
