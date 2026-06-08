@@ -129,7 +129,7 @@ class DecisionTreeClassifier:
         return self.fit(self._X_accum, self._y_accum)
  
 
-     def predict(self, X) -> np.ndarray:
+    def predict(self, X) -> np.ndarray:
         """
         Predict class labels for samples in X.
         Parameters:
@@ -143,3 +143,31 @@ class DecisionTreeClassifier:
             X = X.reshape(1, -1)
         X = self._fill_nan(X)
         return np.array([self._predict_one(x, self.root) for x in X])
+
+    
+
+    def predict_proba(self, X) -> np.ndarray:
+        """
+        Predict class probabilities for samples in X.
+ 
+        Parameters:
+        X : array-like, shape (n_samples, n_features)
+ 
+        Returns np.ndarray, shape (n_samples, n_classes)
+        """
+        self._check_fitted()
+        X = np.asarray(X, dtype=float)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        X = self._fill_nan(X)
+ 
+        n_classes = len(self.classes_)
+        class_to_idx = {c: i for i, c in enumerate(self.classes_)}
+        proba = np.zeros((X.shape[0], n_classes), dtype=float)
+ 
+        for i, x in enumerate(X):
+            pred = self._predict_one(x, self.root)
+            if pred in class_to_idx:
+                proba[i, class_to_idx[pred]] = 1.0
+ 
+        return proba
