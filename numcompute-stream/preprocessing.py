@@ -1,8 +1,6 @@
 """
 preprocessing.py
 Standard Scaler, Min Max Scaler and One Hot Encoder
-
-Author: Risat Rahaman
 """
 
 import numpy as np
@@ -39,6 +37,46 @@ class StandardScaler:
             self.std[self.std == 0] = 1.0
 
         return self
+    
+
+    def partial_fit(self, X):
+        """Incrementally update mean and std using Welford's batch algorithm.
+
+        Parameters:
+        X : array-like, shape (n_samples, n_features)
+        Returns StandardScaler
+        """
+        X_num = np.asarray(X, dtype=float)
+        if X_num.ndim == 1:
+            X_num = X_num.reshape(1, -1)
+
+        n_new = np.sum(~np.isnan(X_num), axis=0).astype(float)
+        chunk_mean = np.nanmean(X_num, axis=0)
+        chunk_var = np.nanvar(X_num, axis=0)
+
+        if self.mean is None:
+            self._n_seen = n_new
+            self.mean = chunk_mean
+            self._M2 = chunk_var * n_new
+        else:
+            n_old = self._n_seen
+            n_total = n_old + n_new
+            safe_total = np.where(n_total == 0, 1, n_total)
+            delta = chunk_mean - self.mean
+            self.mean = self.mean + delta * n_new / safe_total
+            self._M2 = (self._M2 + chunk_var * n_new
+                        + delta ** 2 * n_old * n_new / safe_total)
+            self._n_seen = n_total
+
+        var = np.where(self._n_seen > 1, self._M2 / self._n_seen, 0.0)
+        self.std = np.sqrt(var)
+        self.std[self.std == 0] = 1.0
+        return self
+
+
+
+
+
 
     def transform(self, X):
         """Scale features using the stored mean and standard deviation.
@@ -182,6 +220,31 @@ class OneHotEncoder:
         self.categories = [np.unique(X[:, i]) for i in range(n_features)]
         return self
 
+    def partial_fit(self, X):
+        """Incrementally expand known categories with new data.
+
+        Parameters:
+        X : array-like, shape (n_samples,) or (n_samples, n_features)
+
+        Returns OneHotEncoder
+        """
+        X = np.asarray(X)
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+
+        n_features = X.shape[1]
+        if self.categories is None:
+            self.categories = [np.unique(X[:, i]) for i in range(n_features)]
+        else:
+            if len(self.categories) != n_features:
+                raise ValueError(
+                    f"Expected {len(self.categories)} features, got {n_features}.")
+            for i in range(n_features):
+                new_cats = np.unique(X[:, i])
+                self.categories[i] = np.unique(
+                    np.concatenate([self.categories[i], new_cats]))
+        return self
+
     def transform(self, X):
         """Encode the data using the fitted categories.
 
@@ -251,7 +314,13 @@ class SimpleImputer:
             SimpleImputer.
         """
         return self
-
+    def partial_fit(self, X):
+        """No-op for constant imputer — satisfies streaming API.
+        Parameters:
+        X : array-like (unused)
+        Returns SimpleImputer
+        """
+        return self
     def transform(self, X):
         """Replace missing values with the stored fill value.
 
