@@ -3,14 +3,11 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "numcompute"
+name = "numcompute_stream"
 version = "0.1.0"
-description = "NumCompute ML utilities"
+description = "NumCompute-Stream: A Modularised Ensemble Tree-based Streaming Machine Learning Framework"
 authors = [
-    {name = "Benzamin Yasir"},
-    {name = "Risat Rahaman"},
-    {name = "Saadman Sakib"},
-    {name = "Mazaharul Islam Rakib"}
+    {name = "Saadman Sakib"}
 ]
 requires-python = ">=3.8"
 
