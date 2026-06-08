@@ -3,7 +3,6 @@ metrics.py
 
 Evaluation metrics for classification and regression tasks in NumCompute.
 
-Author: Benzamin Yasir
 """
 from __future__ import annotations
 
@@ -318,3 +317,120 @@ def mse(y_true, y_pred) -> float:
 
     diff = y_true - y_pred
     return float(np.mean(diff ** 2))
+
+
+# Streaming metrics
+class StreamingMetrics:
+    """
+    Incremental classification metrics with streaming update support.
+    Maintains a running confusion matrix that accumulates across chunks.
+    Additionally supports a rolling window over the last N chunks.
+ 
+    Parameters: 
+    labels : array-like or None. Class labels. Inferred from first update() call if None.
+    window_size : int or None. If set, rolling_result() computes metrics over the last `window_size` chunks only.
+    zero_division : float. Value returned when a denominator is zero.
+    
+    """
+ 
+    def __init__(self, labels=None, window_size=None, zero_division=0.0):
+        self._labels = None if labels is None else np.asarray(labels)
+        self._window_size = window_size
+        self._zero_division = zero_division
+        self._cm = None
+        self._chunk_buffer = [] 
+        self._n_chunks = 0
+ 
+    def update(self, y_true_chunk, y_pred_chunk) -> None:
+        """
+        Accumulate a new chunk into the running confusion matrix.
+        Parameters:
+        y_true_chunk : array-like, shape (n,)
+        y_pred_chunk : array-like, shape (n,)
+        """
+        y_true_chunk = _as_1d_array(y_true_chunk, "y_true_chunk")
+        y_pred_chunk = _as_1d_array(y_pred_chunk, "y_pred_chunk")
+        _check_same_length(y_true_chunk, y_pred_chunk)
+ 
+        new_labels = np.unique(np.concatenate([y_true_chunk, y_pred_chunk]))
+        if self._labels is None:
+            self._labels = new_labels
+        else:
+            all_labels = np.unique(np.concatenate([self._labels, new_labels]))
+            if len(all_labels) > len(self._labels):
+                n_new = len(all_labels)
+                new_cm = np.zeros((n_new, n_new), dtype=int)
+                old_idx = np.searchsorted(all_labels, self._labels)
+                if self._cm is not None:
+                    for i, oi in enumerate(old_idx):
+                        for j, oj in enumerate(old_idx):
+                            new_cm[oi, oj] = self._cm[i, j]
+                self._cm = new_cm
+                self._labels = all_labels
+ 
+        chunk_cm = confusion_matrix(y_true_chunk, y_pred_chunk,labels=self._labels)
+        self._cm = chunk_cm if self._cm is None else self._cm + chunk_cm
+ 
+        if self._window_size is not None:
+            self._chunk_buffer.append(
+                (y_true_chunk.copy(), y_pred_chunk.copy()))
+            if len(self._chunk_buffer) > self._window_size:
+                self._chunk_buffer.pop(0)
+ 
+        self._n_chunks = self._n_chunks + 1
+ 
+    def result(self) -> dict:
+        """
+        Return metrics computed over all accumulated chunks.
+        Gives: dict with keys: accuracy, precision_macro, recall_macro, f1_macro,confusion_matrix, n_chunks
+        """
+        if self._cm is None:
+            raise RuntimeError("No data accumulated. Call update() first.")
+        return self._compute_from_cm(self._cm, self._n_chunks)
+ 
+
+    def rolling_result(self) -> dict:
+        """
+        Return metrics computed over the rolling window only.
+        Raises RuntimeError if window_size was not set.
+        """
+        if self._window_size is None:
+            raise RuntimeError(
+                "window_size must be set at construction to use rolling_result().")
+        if not self._chunk_buffer:
+            raise RuntimeError("Rolling buffer is empty. Call update() first.")
+ 
+        y_true_all = np.concatenate([b[0] for b in self._chunk_buffer])
+        y_pred_all = np.concatenate([b[1] for b in self._chunk_buffer])
+        cm = confusion_matrix(y_true_all, y_pred_all, labels=self._labels)
+        return self._compute_from_cm(cm, len(self._chunk_buffer))
+ 
+    def reset(self) -> None:
+        """Reset all accumulated state where labels are preserved."""
+        self._cm = None
+        self._chunk_buffer = []
+        self._n_chunks = 0
+ 
+    def _compute_from_cm(self, cm: np.ndarray, n_chunks: int) -> dict:
+        """Derive scalar metrics from a confusion matrix."""
+        tp = np.diag(cm)
+        fp = np.sum(cm, axis=0) - tp
+        fn = np.sum(cm, axis=1) - tp
+        total = int(np.sum(cm))
+ 
+        acc = float(np.sum(tp) / total) if total > 0 else self._zero_division
+ 
+        per_prec = _safe_divide(tp, tp + fp, zero_division=self._zero_division)
+        per_rec = _safe_divide(tp, tp + fn, zero_division=self._zero_division)
+        denom = per_prec + per_rec
+        per_f1 = np.where(denom == 0, self._zero_division,
+                          2 * per_prec * per_rec / denom)
+ 
+        return {
+            "accuracy": acc,
+            "precision_macro": float(np.mean(per_prec)),
+            "recall_macro": float(np.mean(per_rec)),
+            "f1_macro": float(np.mean(per_f1)),
+            "confusion_matrix": cm.copy(),
+            "n_chunks": n_chunks,
+        }
