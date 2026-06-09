@@ -95,7 +95,7 @@ numcompute-stream/
 python -m pytest tests/ -v
 ```
 
-Expected output: **279 tests passing**
+Expected output: **294 tests passing**
 
 ---
 
