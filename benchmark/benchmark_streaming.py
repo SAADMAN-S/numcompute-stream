@@ -27,7 +27,7 @@ from numcompute_stream.preprocessing import StandardScaler
 
 # Helpers
 
-def make_dataset(n_samples=1000, n_features=10, n_classes=2, seed=42):
+def make_dataset(n_samples=400, n_features=10, n_classes=2, seed=42):
     """Generate a reproducible synthetic classification dataset."""
     rng = np.random.default_rng(seed)
     X = rng.standard_normal((n_samples, n_features))
@@ -38,7 +38,7 @@ def make_dataset(n_samples=1000, n_features=10, n_classes=2, seed=42):
     return X, y
 
 
-def time_it(fn, n_repeat=5):
+def time_it(fn, n_repeat=2):
     """Return median wall-clock time over n_repeat calls (seconds)."""
     times = []
     for _ in range(n_repeat):
@@ -64,13 +64,13 @@ def print_row(label, value, unit="s", width=45):
 def bench_tree_vs_forest():
     print_header("Benchmark 1: Decision Tree vs Random Forest (streaming fit)")
 
-    X, y = make_dataset(n_samples=2000, n_features=10)
+    X, y = make_dataset(n_samples=400, n_features=10)
     chunk_size = 200
     chunks = [(X[i:i+chunk_size], y[i:i+chunk_size])
               for i in range(0, len(X), chunk_size)]
 
     tree = DecisionTreeClassifier(max_depth=5)
-    forest = EnsembleClassifier(n_estimators=10, method="random_forest",
+    forest = EnsembleClassifier(n_estimators=5, method="random_forest",
                                 max_depth=5, random_state=0)
 
     def stream_tree():
@@ -79,7 +79,7 @@ def bench_tree_vs_forest():
             t.partial_fit(Xc, yc)
 
     def stream_forest():
-        f = EnsembleClassifier(n_estimators=10, method="random_forest",
+        f = EnsembleClassifier(n_estimators=5, method="random_forest",
                                max_depth=5, random_state=0)
         for Xc, yc in chunks:
             f.partial_fit(Xc, yc)
@@ -108,7 +108,7 @@ def bench_tree_vs_forest():
 def bench_chunk_size():
     print_header("Benchmark 2: Impact of chunk size on streaming fit time")
 
-    X, y = make_dataset(n_samples=2000, n_features=10)
+    X, y = make_dataset(n_samples=400, n_features=10)
     chunk_sizes = [50, 100, 200, 500, 1000]
 
     print(f"\n  {'Chunk size':<15} {'# Chunks':<12} {'Fit time (s)':>12}")
@@ -118,7 +118,7 @@ def bench_chunk_size():
         chunks = [(X[i:i+cs], y[i:i+cs]) for i in range(0, len(X), cs)]
 
         def run():
-            clf = DecisionTreeClassifier(max_depth=5)
+            clf = DecisionTreeClassifier(max_depth=4)
             for Xc, yc in chunks:
                 clf.partial_fit(Xc, yc)
 
@@ -161,12 +161,12 @@ def bench_loop_vs_vectorised():
 def bench_memory_footprint():
     print_header("Benchmark 4: Model memory footprint as chunks accumulate")
 
-    X, y = make_dataset(n_samples=2000, n_features=10)
+    X, y = make_dataset(n_samples=400, n_features=10)
     chunk_size = 200
     chunks = [(X[i:i+chunk_size], y[i:i+chunk_size])
               for i in range(0, len(X), chunk_size)]
 
-    trainer = StreamTrainer(model=DecisionTreeClassifier(max_depth=5))
+    trainer = StreamTrainer(model=DecisionTreeClassifier(max_depth=4))
 
     print(f"\n  {'Chunk':<8} {'Samples seen':>14} {'Memory (bytes)':>16} {'Accuracy':>10}")
     print(f"  {'-'*52}")
