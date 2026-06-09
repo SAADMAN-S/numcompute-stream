@@ -88,6 +88,11 @@ numcompute-stream/
 ```
 
 ---
+## Quick Verify to run everything at once
+
+```bash
+python -m pip install -e .; python -m pip install matplotlib pytest jupyter; python -m pytest tests/ -q; python benchmark/benchmark_streaming.py
+```
 
 ## Running the Tests
 
