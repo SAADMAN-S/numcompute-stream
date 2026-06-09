@@ -7,8 +7,7 @@ Compares:
 1. Single DecisionTree vs EnsembleClassifier (Random Forest) under streaming
 2. Loop-based prediction vs vectorised NumPy operations
 
-Run with:
-    python benchmark/benchmark_streaming.py
+Run with: python benchmark/benchmark_streaming.py
 
 Author: Saadman Sakib
 """
