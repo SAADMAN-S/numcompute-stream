@@ -116,11 +116,12 @@ class Pipeline:
 
             fit_fn = getattr(step, "partial_fit", None) or step.fit
 
-            if y is not None and _accepts_y(fit_fn):
+            if is_final and y is not None:
+                fit_fn(X, y)
+            elif y is not None and _accepts_y(fit_fn):
                 fit_fn(X, y)
             else:
                 fit_fn(X)
-
             if hasattr(step, "transform") and not is_final:
                 X = step.transform(X)
 

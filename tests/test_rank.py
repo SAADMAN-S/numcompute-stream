@@ -10,7 +10,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'numcompute'))
 
-from numcompute.rank import rank, percentile
+from numcompute_stream.rank import rank, percentile
 
 
 

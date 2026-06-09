@@ -13,7 +13,7 @@ parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from numcompute import io as io_module
+from numcompute_stream import io as io_module
 
 
 class TestLoadCSV(unittest.TestCase):

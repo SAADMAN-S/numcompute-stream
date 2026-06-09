@@ -185,7 +185,9 @@ def f1(y_true, y_pred, average: str = "binary", pos_label=1, zero_division: floa
     p = precision(y_true, y_pred, average=None, zero_division=zero_division)
     r = recall(y_true, y_pred, average=None, zero_division=zero_division)
     denom = p + r
-    per_class = np.where(denom == 0, zero_division, 2 * p * r / denom)
+    
+    with np.errstate(divide='ignore', invalid='ignore'):
+        per_class = np.where(denom == 0, zero_division, 2 * p * r / denom)
 
     y_true_arr = _as_1d_array(y_true, "y_true")
     y_pred_arr = _as_1d_array(y_pred, "y_pred")
@@ -421,8 +423,8 @@ class StreamingMetrics:
         per_prec = _safe_divide(tp, tp + fp, zero_division=self._zero_division)
         per_rec = _safe_divide(tp, tp + fn, zero_division=self._zero_division)
         denom = per_prec + per_rec
-        per_f1 = np.where(denom == 0, self._zero_division,
-                          2 * per_prec * per_rec / denom)
+        # avoiding runtime warnings by ignoring invalid divisions where denominator is 0.
+        with np.errstate(divide='ignore', invalid='ignore'):per_f1 = np.where(denom == 0, self._zero_division, 2 * per_prec * per_rec / denom)
  
         return {
             "accuracy": acc,

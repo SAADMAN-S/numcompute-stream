@@ -11,7 +11,7 @@ import numpy as np
 # Make Python find numcompute/ from the tests/ folder
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'numcompute'))
 
-from numcompute.sort_search import stable_sort, multi_key_sort, topk, quickselect, binary_search
+from numcompute_stream.sort_search import stable_sort, multi_key_sort, topk, quickselect, binary_search
 
 
 

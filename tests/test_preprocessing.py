@@ -10,7 +10,7 @@ import os, sys
 
 sys.path.append("../numcompute")
 
-from numcompute.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, SimpleImputer
+from numcompute_stream.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, SimpleImputer
 
 class TestStandardScaler(unittest.TestCase):
     """Tests for StandardScaler."""

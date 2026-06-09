@@ -9,7 +9,7 @@ import sys
 
 sys.path.append("../numcompute")
 
-from numcompute.utils import (
+from numcompute_stream.utils import (
     euclidean,
     manhattan,
     cosine_distance,

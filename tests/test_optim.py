@@ -1,7 +1,7 @@
 import numpy as np
-from numcompute.optim import grad
+from numcompute_stream.optim import grad
 import pytest
-from numcompute.optim import jacobian
+from numcompute_stream.optim import jacobian
 
 def test_grad_simple():
     def f(x):
