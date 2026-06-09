@@ -185,7 +185,7 @@ def f1(y_true, y_pred, average: str = "binary", pos_label=1, zero_division: floa
     p = precision(y_true, y_pred, average=None, zero_division=zero_division)
     r = recall(y_true, y_pred, average=None, zero_division=zero_division)
     denom = p + r
-    
+    # avoiding runtime warnings by ignoring invalid divisions where denominator is 0.
     with np.errstate(divide='ignore', invalid='ignore'):
         per_class = np.where(denom == 0, zero_division, 2 * p * r / denom)
 

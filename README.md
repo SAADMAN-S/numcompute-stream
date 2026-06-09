@@ -1,248 +1,187 @@
-# NumCompute
+# NumCompute-Stream
 
-**A modular, NumPy-only machine-learning framework built from scratch.**
-
-NumCompute is a self-contained Python package that re-implements the core scikit-learn workflow using only NumPy: CSV ingestion, preprocessing transformers, sorting and search primitives, ranking and percentiles, descriptive statistics, classification and regression metrics, finite-difference optimisation, and a chained Transformer/Estimator/Pipeline API.
-
+A modular, NumPy-only streaming machine learning framework built from scratch.  
+**Author:** Saadman Sakib | **Course:** COMP 5004 | **Assignment:** 2.2
 
 ---
 
-## Table of Contents
+## Overview
 
-1. [Installation](#installation)
-2. [Project Structure](#project-structure)
-3. [Quickstart](#quickstart)
-4. [API Overview](#api-overview)
-5. [Performance](#performance)
-6. [Testing](#testing)
-7. [Demo Notebook](#demo-notebook)
-8. [Authors](#authors)
+NumCompute-Stream extends the NumCompute package (Assignment 2.1) into a full streaming ML framework. Every component supports incremental `partial_fit()` or `update()` methods, simulating real-world online learning where data arrives in chunks.
+
+**New modules added:**
+- `tree.py` — Decision Tree classifier (Gini / Entropy, depth-limited)
+- `ensemble.py` — Ensemble classifier (Random Forest, Bagging)
+- `stream.py` — StreamTrainer for chunk-wise training and logging
+- `visualise.py` — matplotlib plotting for streaming metrics
+
+**Updated modules:**
+- `preprocessing.py` — `StandardScaler`, `OneHotEncoder`, `SimpleImputer` all support `partial_fit()`
+- `stats.py` — `StreamingStats` with `update_stats()` API
+- `metrics.py` — `StreamingMetrics` with `update()`, `reset()`, `result()`
+- `pipeline.py` — `Pipeline.partial_fit()` for chained streaming
 
 ---
 
-## Installation
+## Setup
 
-NumCompute targets Python 3.8+ and depends only on NumPy.
+### Requirements
+- Python ≥ 3.8
+- NumPy
+- matplotlib
+- pytest (for tests)
+- jupyter (for demo notebook)
+
+### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/BZMYSR/ProgAI-Assignment-2.1 NumCompute
-cd NumCompute
+git clone https://github.com/SAADMAN-S/numcompute-stream.git
+cd numcompute-stream
 
-# Create Virtual Environment:
-python -m venv .venv
+# Install the package in editable mode
+python -m pip install -e .
 
-# Activate Environment:
-# Windows: 
-.venv\Scripts\activate
-# macOS/Linux: 
-source .venv/bin/activate
-# Upon activation, (.venv) will appear in your terminal prompt.
-
-# Install in editable mode
-pip install -e .
-pip install numpy
-pip install matplotlib pytest  # Optional: for demo and testing
+# Install dependencies
+python -m pip install numpy matplotlib pytest jupyter
 ```
-
-Or run the demo without installing — just make sure the package directory is on `PYTHONPATH`:
-
-```bash
-PYTHONPATH=. python demo/quickstart.py
-```
-
-**Requirements**
-
-- Python ≥ 3.8
-- NumPy ≥ 1.24
-- (optional) Matplotlib ≥ 3.7 — only for the demo notebook
-- (optional) pytest ≥ 7.0 — only for the test suite
 
 ---
 
 ## Project Structure
 
 ```
-NumCompute/
-├── numcompute/
+numcompute-stream/
+├── numcompute_stream/
 │   ├── __init__.py
-│   ├── io.py              # CSV reader (NaN fill, dtype handling)
-│   ├── preprocessing.py   # StandardScaler, MinMaxScaler, Imputer, OneHotEncoder
-│   ├── sort_search.py     # stable_sort, multi_key_sort, topk, quickselect, binary_search
-│   ├── rank.py            # Ranking with ties; percentiles
-│   ├── stats.py           # Welford streaming, histogram, quantiles, summary
-│   ├── metrics.py         # accuracy / precision / recall / F1, MSE, confusion matrix
-│   ├── optim.py           # Finite-difference gradient (∇), Jacobian
-│   ├── pipeline.py        # Transformer / Estimator / Pipeline API
-│   ├── utils.py           # Distances, activations, logsumexp, batching
-│   └── benchmarking.py    # Micro-benchmark harness
-├── tests/                 # Unit tests covering edge cases
+│   ├── io.py               # CSV loading with NaN handling
+│   ├── preprocessing.py    # Scalers, Imputer, Encoder (+ partial_fit)
+│   ├── stats.py            # Descriptive stats + StreamingStats
+│   ├── metrics.py          # Classification metrics + StreamingMetrics
+│   ├── pipeline.py         # Pipeline with partial_fit support
+│   ├── tree.py             # DecisionTreeClassifier (NEW)
+│   ├── ensemble.py         # EnsembleClassifier: Random Forest, Bagging (NEW)
+│   ├── stream.py           # StreamTrainer for chunk-wise training (NEW)
+│   ├── visualise.py        # matplotlib plotting functions (NEW)
+│   ├── utils.py            # Distance functions, activations, helpers
+│   ├── sort_search.py      # Sorting and search algorithms
+│   ├── rank.py             # Ranking and percentiles
+│   ├── optim.py            # Finite-difference optimisation
+│   └── benchmarking.py     # Benchmarking harness
+├── tests/
+│   ├── test_tree.py        # DecisionTreeClassifier tests
+│   ├── test_visualise.py   # Visualise tests
+│   ├── test_ensemble.py    # EnsembleClassifier tests
+│   ├── test_stream.py      # StreamTrainer tests
+│   ├── test_streaming.py   # Streaming extensions tests
+│   ├── test_metrics.py
+│   ├── test_preprocessing.py
+│   ├── test_stats.py
+│   └── ...
 ├── demo/
-│   ├── quickstart.ipynb   # End-to-end demo (executed)
-│   └── employees.csv      # Sample dataset with missing values
+│   ├── stream_demo.ipynb   # Streaming ML demo notebook
+│   └── employees.csv       # Sample dataset
+├── benchmark/
+│   └── benchmark_streaming.py  # Performance benchmarks
 ├── README.md
 └── pyproject.toml
 ```
 
 ---
 
-## API Overview
+## Running the Tests
 
-### `io.py` — Data ingestion
+```bash
+python -m pytest tests/ -v
+```
 
-| Function | Purpose |
-|---|---|
-| `load_csv(path, delimiter=',', fill_missing_value='nan')` | Load CSV; cast to `float` if possible, fall back to string |
-| `get_column(name, data, header)` | Extract a column by name |
-
-### `preprocessing.py` — Feature preparation
-
-| Class | Purpose |
-|---|---|
-| `SimpleImputer()` | Replace NaNs with constant value |
-| `StandardScaler()` | Zero mean, unit variance per feature |
-| `MinMaxScaler(feature_range=(0,1))` | Scale features to a target range |
-| `OneHotEncoder()` | Expand categorical columns into 0/1 indicator columns |
-
-All transformers expose `fit`, `transform`, and `fit_transform`.
-
-### `sort_search.py` — Sorting & selection
-
-| Function | Complexity | Purpose |
-|---|---|---|
-| `stable_sort(arr, axis=-1)` | O(n log n) | Stable mergesort |
-| `multi_key_sort(arr, keys, ascending)` | O(n log n) | Sort 2-D array by multiple columns |
-| `topk(arr, k, largest=True)` | O(n + k log k) | k-largest or k-smallest values |
-| `quickselect(arr, k)` | O(n) average | k-th smallest (educational, pure Python) |
-| `binary_search(arr, x)` | O(log n) | Returns `(index, found)` |
-
-### `rank.py` — Ranking & percentiles
-
-| Function | Purpose |
-|---|---|
-| `rank(data, method='average'\|'dense'\|'ordinal')` | Vectorised rank with tie handling |
-| `percentile(data, q, interpolation='linear'\|'lower'\|'higher'\|'midpoint')` | NaN-safe percentile |
-
-### `stats.py` — Descriptive & streaming statistics
-
-| Function / Class | Purpose |
-|---|---|
-| `mean / var / std / median / minimum / maximum` | NaN-safe (`skipna=True` default) |
-| `histogram(x, bins=10)` | NaN-safe histogram |
-| `quantile(x, q, interpolation='linear')` | NaN-safe quantile |
-| `summary(x, axis=None)` | Returns dict of common stats |
-| `Welford()` | Single-pass online mean / variance |
-
-### `metrics.py` — Evaluation metrics
-
-| Function | Purpose |
-|---|---|
-| `accuracy(y_true, y_pred)` | Classification accuracy |
-| `precision / recall / f1(..., average='binary'\|'macro'\|None)` | Standard classification metrics |
-| `confusion_matrix(y_true, y_pred, labels=None)` | Square matrix of class counts |
-| `mse(y_true, y_pred)` | Regression error metrics |
-
-### `optim.py` — Finite-difference optimisation
-
-| Function | Purpose |
-|---|---|
-| `grad(f, x, h=1e-5, method='central'\|'forward')` | Gradient of a scalar function |
-| `jacobian(F, x, h=1e-5, method='central'\|'forward')` | Jacobian of a vector function |
-
-Central-difference is **O(h²)** accurate; forward-difference is **O(h)** accurate.
-
-### `pipeline.py` — Composition
-
-| Class | Purpose |
-|---|---|
-| `Transformer` | Base class with `fit / transform / fit_transform` |
-| `Estimator` | Base class with `fit / predict` |
-| `Pipeline([(name, step), ...])` | Chains transformers and an optional final estimator |
-
-The Pipeline uses `inspect.signature` to detect whether a step accepts `y`, so unsupervised transformers and supervised estimators can be chained without special-casing.
-
-### `utils.py` — General helpers
-
-Distances (`euclidean`, `manhattan`, `cosine_distance`), activations (`relu`, `leaky_relu`, `sigmoid`, `tanh`), `softmax`, `logsumexp` (max-shifted for numerical stability), `batch` generator.
+Expected output: **279 tests passing**
 
 ---
 
-## Performance
-
-All benchmarks run single-threaded via `time.perf_counter` (n_repeat = 7, warm-up = 1); medians are reported. Environment: Python 3.12, NumPy 2.4, Linux.
-
-### Vectorised vs Python loops (n = 100,000)
-
-| Operation | Python loop | Vectorised | Speedup |
-|---|---:|---:|---:|
-| `mean` | 85.81 ms | 524 µs | **163.7×** |
-| `accuracy` | 187.58 ms | 2.29 ms | **81.8×** |
-| sum-of-squared-diff | 193.39 ms | 23.90 ms | **8.1×** |
-
-### Sorting & search
-
-| Operation | n | Median | Notes |
-|---|---:|---:|---|
-| `stable_sort` | 100,000 | 117.92 ms | NumPy mergesort, O(n log n) |
-| `np.sort` (reference) | 100,000 | 10.18 ms | Quicksort baseline |
-| `topk` (k = 10) | 100,000 | 3.62 ms | argpartition — O(n) |
-| `topk` (k = 10,000) | 100,000 | 4.93 ms | argpartition + argsort(k) |
-| `binary_search` | 100,000 | 2.11 µs | searchsorted — O(log n) |
-
-### Gradient accuracy
-
-For *f(x) = ‖x‖²* with x ∈ ℝ⁵⁰ and h = 10⁻⁵:
-
-| Method | Max abs error | Theory |
-|---|---:|---|
-| Forward difference | 1.00 × 10⁻⁵ | O(h) |
-| Central difference | **4.27 × 10⁻¹⁰** | O(h²) |
-
-A linear map *F(x) = Ax* with A ∈ ℝ²⁰ˣ⁵⁰ is recovered to within **1.6 × 10⁻¹⁰** entry-wise.
-
-Reproduce these numbers with:
+## Running the Benchmark
 
 ```bash
-python -m numcompute.benchmarking
+python benchmark/benchmark_streaming.py
+```
+
+Benchmarks include:
+- Decision Tree vs Random Forest streaming fit time and accuracy
+- Impact of chunk size on training time
+- Python loop vs NumPy vectorised operations (81x speedup)
+- Memory footprint growth over streaming chunks
+
+---
+
+## Running the Demo Notebook
+
+```bash
+cd demo
+python -m jupyter notebook stream_demo.ipynb
+```
+
+The notebook demonstrates:
+1. Loading CSV data via `io.py`
+2. Splitting into chunks to simulate a data stream
+3. Incremental training with `DecisionTreeClassifier` and `EnsembleClassifier`
+4. Per-chunk accuracy logging via `StreamTrainer`
+5. Real-time metric visualisation via `visualise.py`
+6. `StreamingMetrics` for cumulative and rolling-window evaluation
+7. `Pipeline.partial_fit()` chaining scaler and model
+
+---
+
+## Quick API Example
+
+```python
+import numpy as np
+from numcompute_stream.tree import DecisionTreeClassifier
+from numcompute_stream.ensemble import EnsembleClassifier
+from numcompute_stream.stream import StreamTrainer
+
+# Create a streaming dataset
+X = np.random.randn(200, 4)
+y = (X[:, 0] > 0).astype(int)
+chunks = [(X[i:i+50], y[i:i+50]) for i in range(0, 200, 50)]
+
+# Train a Decision Tree incrementally
+trainer = StreamTrainer(model=DecisionTreeClassifier(max_depth=5))
+for Xc, yc in chunks:
+    trainer.fit_chunk(Xc, yc)
+
+trainer.print_log()
+
+# Train a Random Forest incrementally
+rf_trainer = StreamTrainer(
+    model=EnsembleClassifier(n_estimators=10, method='random_forest')
+)
+for Xc, yc in chunks:
+    rf_trainer.fit_chunk(Xc, yc)
+
+print(rf_trainer.cumulative_metrics())
 ```
 
 ---
 
-## Testing
+## Visualisation
 
-Run the full suite with pytest:
+```python
+from numcompute_stream import visualise
 
-```bash
-pytest tests/ -v
+# Plot accuracy over chunks
+visualise.plot_metric_over_time(trainer.accuracy_history(), ylabel='Accuracy')
+
+# Compare two models
+visualise.compare_models(
+    trainer.accuracy_history(),
+    rf_trainer.accuracy_history(),
+    labels=('Decision Tree', 'Random Forest')
+)
 ```
 
 ---
 
-## Demo Notebook
+## Constraints
 
-The demo (`demo/quickstart.ipynb`) walks through the full pipeline on a fictional 60-employee dataset with realistic missing values:
-
-1. Loading a CSV with `io.load_csv`
-2. Imputation → standardisation → one-hot encoding
-3. Top-k highest salaries, quickselect median, binary search
-4. Tie-aware ranking and salary percentiles
-5. Per-column statistics, histogram, Welford streaming
-6. Finite-difference gradient and Jacobian
-7. Vectorised vs. Python-loop benchmark
-8. Pipeline composition
-
-The notebook is pre-executed — open it in JupyterLab or VS Code to see the results
-
----
-
-## Authors
-
-| Author | Modules Owned |
-|---|---|
-| Risat Rahaman | `io.py`, `preprocessing.py`, `utils.py` |
-| Saadman Sakib | `sort_search.py`, `rank.py` |
-| Mazharul Islam Rakib | `optim.py`, `pipeline.py` |
-| Benzamin Yasir | `stats.py`, `metrics.py`|
-| Team | `benchmarking.py`, `tests/` |
-
----
+- Only **NumPy** and **matplotlib** used for all ML and visualisation logic
+- No scikit-learn, pandas, or PyTorch
